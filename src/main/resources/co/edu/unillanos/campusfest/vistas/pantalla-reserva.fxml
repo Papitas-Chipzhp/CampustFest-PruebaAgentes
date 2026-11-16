@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      styleClass="pantalla"
+      stylesheets="@estilos.css">
+
+    <Label text="Reserva temporal de entrada" styleClass="titulo"/>
+    <Label text="Eventos precargados de ejemplo: ev-1 y ev-2 (puedes reservar o confirmar por ID de evento)"
+           styleClass="subtitulo-ayuda"
+           wrapText="true"
+           maxWidth="Infinity"/>
+
+    <Label text="ID del evento" styleClass="etiqueta-campo"/>
+    <TextField fx:id="campoEventoId"
+               text="ev-1"
+               promptText="Ej. ev-1 o ev-2"
+               styleClass="campo-texto"/>
+
+    <Label text="ID del estudiante" styleClass="etiqueta-campo"/>
+    <TextField fx:id="campoEstudianteId"
+               promptText="Ej. est-101"
+               styleClass="campo-texto"/>
+
+    <Label text="Código de reserva (QR)" styleClass="etiqueta-campo"/>
+    <TextField fx:id="campoCodigoReserva"
+               promptText="Se genera al solicitar reserva o ingrésalo para confirmar"
+               styleClass="campo-texto"/>
+
+    <HBox spacing="10">
+        <Button text="Solicitar reserva" onAction="#solicitarReserva" styleClass="boton-primario"/>
+        <Button text="Confirmar reserva" onAction="#confirmarReserva" styleClass="boton-secundario"/>
+        <Button text="Copiar código QR" onAction="#copiarCodigo" styleClass="boton-secundario"/>
+        <Button text="Limpiar" onAction="#limpiar" styleClass="boton-limpiar"/>
+    </HBox>
+
+    <Label fx:id="etiquetaMensaje"
+           styleClass="etiqueta-mensaje"
+           wrapText="true"
+           maxWidth="Infinity"/>
+</VBox>
