@@ -43,6 +43,24 @@ public class RepositorioEventosH2 implements RepositorioEventos {
             ORDER BY r.VENCE_EN, r.CODIGO
             """;
 
+    private static final String SQL_GUARDAR_EVENTO = """
+            MERGE INTO EVENTO (ID, NOMBRE, FECHA, LUGAR, AFORO, BLOQUEADOS)
+            KEY (ID)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """;
+
+    private static final String SQL_GUARDAR_RESERVA = """
+            MERGE INTO RESERVA (CODIGO, EVENTO_ID, ESTUDIANTE_ID, VENCE_EN, ESTADO)
+            KEY (CODIGO)
+            VALUES (?, ?, ?, ?, ?)
+            """;
+
+    private static final String SQL_GUARDAR_ASISTENCIA = """
+            MERGE INTO ASISTENCIA (RESERVA_CODIGO, HORA)
+            KEY (RESERVA_CODIGO)
+            VALUES (?, ?)
+            """;
+
     private final Connection conexion;
 
     /**
@@ -79,9 +97,100 @@ public class RepositorioEventosH2 implements RepositorioEventos {
         }
     }
 
+    /**
+     * Inserta o actualiza el evento junto con sus reservas y asistencias de forma transaccional.
+     */
     @Override
     public void guardar(Evento evento) {
-        throw new UnsupportedOperationException("Pendiente v6");
+        if (evento == null) {
+            throw new IllegalArgumentException("El evento es obligatorio.");
+        }
+        boolean autoCommitPrevio = true;
+        boolean transaccionPropia = false;
+        try {
+            autoCommitPrevio = conexion.getAutoCommit();
+            if (autoCommitPrevio) {
+                conexion.setAutoCommit(false);
+                transaccionPropia = true;
+            }
+            guardarEvento(evento);
+            guardarReservas(evento);
+            if (transaccionPropia) {
+                conexion.commit();
+            }
+        } catch (SQLException e) {
+            if (transaccionPropia) {
+                deshacerTransaccion();
+            }
+            throw new IllegalStateException(
+                    "No fue posible guardar el evento en la base de datos.", e);
+        } finally {
+            if (transaccionPropia) {
+                restaurarAutoCommit(autoCommitPrevio);
+            }
+        }
+    }
+
+    private void deshacerTransaccion() {
+        try {
+            if (!conexion.isClosed()) {
+                conexion.rollback();
+            }
+        } catch (SQLException ignorada) {
+            // Se conserva la excepción original que originó el rollback.
+        }
+    }
+
+    private void restaurarAutoCommit(boolean autoCommitPrevio) {
+        try {
+            if (!conexion.isClosed()) {
+                conexion.setAutoCommit(autoCommitPrevio);
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException(
+                    "No fue posible restaurar el modo de confirmación automática.", e);
+        }
+    }
+
+    private void guardarReservas(Evento evento) throws SQLException {
+        for (Reserva reserva : evento.getReservas()) {
+            guardarReserva(evento.getId(), reserva);
+            guardarAsistencia(reserva.getCodigo(), reserva.getAsistencia());
+        }
+    }
+
+    private void guardarEvento(Evento evento) throws SQLException {
+        try (PreparedStatement sentencia = conexion.prepareStatement(SQL_GUARDAR_EVENTO)) {
+            sentencia.setString(1, evento.getId());
+            sentencia.setString(2, evento.getNombre());
+            sentencia.setTimestamp(3, Timestamp.valueOf(evento.getFecha()));
+            sentencia.setString(4, evento.getLugar());
+            sentencia.setInt(5, evento.getAforo());
+            sentencia.setInt(6, evento.getBloqueados());
+            sentencia.executeUpdate();
+        }
+    }
+
+    private void guardarReserva(String eventoId, Reserva reserva) throws SQLException {
+        try (PreparedStatement sentencia = conexion.prepareStatement(SQL_GUARDAR_RESERVA)) {
+            sentencia.setString(1, reserva.getCodigo());
+            sentencia.setString(2, eventoId);
+            sentencia.setString(3, reserva.getEstudianteId());
+            sentencia.setTimestamp(4, Timestamp.valueOf(reserva.getVenceEn()));
+            sentencia.setString(5, reserva.getEstado().name());
+            sentencia.executeUpdate();
+        }
+    }
+
+    private void guardarAsistencia(String codigoReserva, Asistencia asistencia) throws SQLException {
+        if (asistencia == null) {
+            return;
+        }
+        try (PreparedStatement sentencia = conexion.prepareStatement(SQL_GUARDAR_ASISTENCIA)) {
+            sentencia.setString(1, codigoReserva);
+            sentencia.setTimestamp(2, Timestamp.valueOf(asistencia.getHora()));
+            sentencia.executeUpdate();
+        }
     }
 
     private List<Reserva> buscarReservas(String eventoId) throws SQLException {
@@ -135,18 +244,23 @@ public class RepositorioEventosH2 implements RepositorioEventos {
     }
 
     private String cargarScriptEsquema() {
+        String sql = null;
         try (InputStream entrada = RepositorioEventosH2.class.getResourceAsStream(RUTA_ESQUEMA_CLASSPATH)) {
             if (entrada != null) {
-                return new String(entrada.readAllBytes(), StandardCharsets.UTF_8);
-            }
-            Path archivo = Path.of(RUTA_ESQUEMA_DISCO);
-            if (Files.isRegularFile(archivo)) {
-                return Files.readString(archivo, StandardCharsets.UTF_8);
+                sql = new String(entrada.readAllBytes(), StandardCharsets.UTF_8);
+            } else {
+                Path archivo = Path.of(RUTA_ESQUEMA_DISCO);
+                if (Files.isRegularFile(archivo)) {
+                    sql = Files.readString(archivo, StandardCharsets.UTF_8);
+                }
             }
         } catch (IOException e) {
             throw new IllegalStateException(
                     "No fue posible leer el script del esquema de base de datos.", e);
         }
-        throw new IllegalStateException("No se encontró el script del esquema de base de datos.");
+        if (sql == null || sql.isBlank()) {
+            throw new IllegalStateException("No se encontró el script del esquema de base de datos.");
+        }
+        return sql;
     }
 }
