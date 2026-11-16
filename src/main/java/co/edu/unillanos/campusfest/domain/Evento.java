@@ -45,6 +45,44 @@ public class Evento {
         this.reservas = reservas == null ? new ArrayList<>() : new ArrayList<>(reservas);
     }
 
+    public int contarOcupados(LocalDateTime ahora) {
+        if (ahora == null) {
+            throw new IllegalArgumentException("La hora actual es obligatoria.");
+        }
+        int ocupados = 0;
+        for (Reserva reserva : reservas) {
+            if (reserva.ocupaCupo(ahora)) {
+                ocupados++;
+            }
+        }
+        return ocupados;
+    }
+
+    public int cuposDisponibles(LocalDateTime ahora) {
+        return aforo - bloqueados - contarOcupados(ahora);
+    }
+
+    public Reserva reservar(String estudianteId, LocalDateTime ahora) {
+        validarTexto(estudianteId, "El identificador del estudiante es obligatorio.");
+        if (cuposDisponibles(ahora) <= 0) {
+            throw new IllegalStateException("No hay cupos disponibles para este evento.");
+        }
+        Reserva reserva = Reserva.pendiente(estudianteId, ahora);
+        reservas.add(reserva);
+        return reserva;
+    }
+
+    public Reserva buscarReservaPorCodigo(String codigo) {
+        validarTexto(codigo, "El código de la reserva es obligatorio.");
+        for (Reserva reserva : reservas) {
+            if (reserva.getCodigo().equals(codigo)) {
+                return reserva;
+            }
+        }
+        throw new IllegalArgumentException(
+                "No existe una reserva con el código " + codigo + " en este evento.");
+    }
+
     public String getId() {
         return id;
     }
