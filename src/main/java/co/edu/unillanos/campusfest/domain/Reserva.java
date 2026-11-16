@@ -40,6 +40,22 @@ public class Reserva {
         return new Reserva(codigo, estudianteId, venceEn, estado, asistencia);
     }
 
+    public boolean estaVigente(LocalDateTime ahora) {
+        validarHora(ahora);
+        return ahora.isBefore(venceEn);
+    }
+
+    public boolean ocupaCupo(LocalDateTime ahora) {
+        validarHora(ahora);
+        if (estado == EstadoReserva.CONFIRMADA) {
+            return true;
+        }
+        if (estado == EstadoReserva.PENDIENTE) {
+            return estaVigente(ahora);
+        }
+        return false;
+    }
+
     public String getCodigo() {
         return codigo;
     }
