@@ -6,11 +6,20 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import co.edu.unillanos.campusfest.application.port.RepositorioEventos;
+import co.edu.unillanos.campusfest.domain.Asistencia;
+import co.edu.unillanos.campusfest.domain.EstadoReserva;
 import co.edu.unillanos.campusfest.domain.Evento;
+import co.edu.unillanos.campusfest.domain.Reserva;
 
 /**
  * Adaptador de persistencia H2 del puerto RepositorioEventos.
@@ -19,6 +28,20 @@ public class RepositorioEventosH2 implements RepositorioEventos {
 
     private static final String RUTA_ESQUEMA_CLASSPATH = "/db/schema.sql";
     private static final String RUTA_ESQUEMA_DISCO = "src/main/resources/db/schema.sql";
+
+    private static final String SQL_BUSCAR_EVENTO = """
+            SELECT ID, NOMBRE, FECHA, LUGAR, AFORO, BLOQUEADOS
+            FROM EVENTO
+            WHERE ID = ?
+            """;
+
+    private static final String SQL_BUSCAR_RESERVAS = """
+            SELECT r.CODIGO, r.ESTUDIANTE_ID, r.VENCE_EN, r.ESTADO, a.HORA
+            FROM RESERVA r
+            LEFT JOIN ASISTENCIA a ON a.RESERVA_CODIGO = r.CODIGO
+            WHERE r.EVENTO_ID = ?
+            ORDER BY r.VENCE_EN, r.CODIGO
+            """;
 
     private final Connection conexion;
 
@@ -33,14 +56,67 @@ public class RepositorioEventosH2 implements RepositorioEventos {
         inicializarEsquema();
     }
 
+    /**
+     * Busca un evento por su identificador y reconstruye todas sus reservas y asistencias.
+     */
     @Override
     public Evento buscar(String eventoId) {
-        return null;
+        if (eventoId == null || eventoId.isBlank()) {
+            return null;
+        }
+        try (PreparedStatement consulta = conexion.prepareStatement(SQL_BUSCAR_EVENTO)) {
+            consulta.setString(1, eventoId);
+            try (ResultSet resultado = consulta.executeQuery()) {
+                if (!resultado.next()) {
+                    return null;
+                }
+                List<Reserva> reservas = buscarReservas(eventoId);
+                return reconstruirEvento(resultado, reservas);
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException(
+                    "No fue posible consultar el evento en la base de datos.", e);
+        }
     }
 
     @Override
     public void guardar(Evento evento) {
         throw new UnsupportedOperationException("Pendiente v6");
+    }
+
+    private List<Reserva> buscarReservas(String eventoId) throws SQLException {
+        List<Reserva> reservas = new ArrayList<>();
+        try (PreparedStatement consulta = conexion.prepareStatement(SQL_BUSCAR_RESERVAS)) {
+            consulta.setString(1, eventoId);
+            try (ResultSet resultado = consulta.executeQuery()) {
+                while (resultado.next()) {
+                    reservas.add(reconstruirReserva(resultado));
+                }
+            }
+        }
+        return reservas;
+    }
+
+    private Evento reconstruirEvento(ResultSet resultado, List<Reserva> reservas) throws SQLException {
+        String id = resultado.getString("ID");
+        String nombre = resultado.getString("NOMBRE");
+        LocalDateTime fecha = resultado.getTimestamp("FECHA").toLocalDateTime();
+        String lugar = resultado.getString("LUGAR");
+        int aforo = resultado.getInt("AFORO");
+        int bloqueados = resultado.getInt("BLOQUEADOS");
+        return new Evento(id, nombre, fecha, lugar, aforo, bloqueados, reservas);
+    }
+
+    private Reserva reconstruirReserva(ResultSet resultado) throws SQLException {
+        String codigo = resultado.getString("CODIGO");
+        String estudianteId = resultado.getString("ESTUDIANTE_ID");
+        LocalDateTime venceEn = resultado.getTimestamp("VENCE_EN").toLocalDateTime();
+        EstadoReserva estado = EstadoReserva.valueOf(resultado.getString("ESTADO"));
+        Timestamp horaAsistencia = resultado.getTimestamp("HORA");
+        Asistencia asistencia = horaAsistencia == null
+                ? null
+                : new Asistencia(horaAsistencia.toLocalDateTime());
+        return Reserva.reconstruir(codigo, estudianteId, venceEn, estado, asistencia);
     }
 
     private void inicializarEsquema() {
