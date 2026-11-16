@@ -81,12 +81,17 @@ mvn javafx:run
 
 Durante las revisiones cruzadas en Pull Requests se detectaron y corrigieron los siguientes casos antes de aprobar su integración a `main`:
 
-### Caso 1 (`PR #2` — `RegistrarIngreso.java`, rama `feature/casos-de-uso`)
+### Caso 1 (`PR #5` — `RegistrarIngreso.java`, rama `feature/casos-uso-reservas-evento-ingreso`)
 - **Qué propuso inicialmente la IA**: en el caso de uso `RegistrarIngreso`, la primera versión importaba `EstadoReserva` y verificaba `if (reserva.getEstado() != EstadoReserva.CONFIRMADA) { throw new IllegalStateException(...); }` antes de llamar a `reserva.registrarIngreso(reloj.ahora())`.
 - **Qué regla violaba**: **Experto en información**, encapsulamiento del dominio (consultar `reserva.getEstado()` desde fuera de `Reserva`) y **Regla única** (duplicaba una validación que ya estaba implementada dentro de `Reserva.registrarIngreso`).
 - **Cómo se detectó y corrigió**: en la revisión del Pull Request se solicitó eliminar el `import EstadoReserva` y la condición repetida, subiendo el commit de corrección que delega íntegramente en `reserva.registrarIngreso(reloj.ahora())`.
 
-### Caso 2 (`PR #5` — `PantallaReservaController.java`, rama `feature/controladores-ui`)
+### Caso 2 (`PR #8` — `RepositorioEventosH2.java`, rama `feature/h2-guardar-transaccional`)
+- **Qué propuso inicialmente la IA**: en los manejadores `catch (SQLException e)` de `RepositorioEventosH2`, el adaptador concatenaba `+ e.getMessage()` al mensaje de la excepción `IllegalStateException` propagada hacia los casos de uso y la interfaz gráfica.
+- **Qué regla violaba**: aislamiento de infraestructura y protección de errores de persistencia (exponer detalles técnicos de JDBC/SQL hacia capas superiores y pantallas, incumpliendo el Aspecto 6.4).
+- **Cómo se detectó y corrigió**: durante la revisión del Pull Request se señaló la filtración del detalle SQL y se corrigió en un nuevo commit conservando `e` únicamente como causa interna y mostrando mensajes claros en español.
+
+### Caso 3 (`PR #9` — `PantallaReservaController.java`, rama `feature/controladores-ui`)
 - **Qué propuso inicialmente la IA**: al construir el mensaje de éxito tras solicitar una reserva, el controlador calculaba la hora de vencimiento localmente con `LocalDateTime.now().plusMinutes(10)` en lugar de consultar el objeto retornado por el caso de uso.
 - **Qué regla violaba**: **Regla única** (duplicaba el plazo de 10 minutos que pertenece a `Reserva`), **Indirección del reloj** (invocaba `LocalDateTime.now()` fuera de `RelojDelSistema`) y aislamiento de controladores JavaFX sin reglas de negocio.
 - **Cómo se detectó y corrigió**: al ejecutar `mvn clean test "-Dtest=PantallasTest"`, fallaron `losControladoresNoTienenReglasDelNegocio` y `losControladoresNoConocenLaPersistenciaNiElReloj`, además de la revisión del PR. Se subió un commit de corrección leyendo directamente `reserva.getVenceEn().format(FORMATO_HORA)`.
@@ -96,4 +101,4 @@ Durante las revisiones cruzadas en Pull Requests se detectaron y corrigieron los
 ## Control de calidad final
 
 - `mvn clean test`: **90/90 pruebas en verde** sin modificar ni desactivar ninguna prueba de `src/test/`.
-- Cambio limpio de almacenamiento en `PR #6` (`feature/app-ensamblaje-h2`): pasando de `RepositorioEventosEnMemoria` a `RepositorioEventosH2` modificando únicamente `App.java`.
+- Cambio limpio de almacenamiento en `PR #10` (`feature/app-ensamblaje-y-h2`): pasando de `RepositorioEventosEnMemoria` a `RepositorioEventosH2` modificando únicamente `App.java`.
