@@ -55,6 +55,12 @@ public class RepositorioEventosH2 implements RepositorioEventos {
             VALUES (?, ?, ?, ?, ?)
             """;
 
+    private static final String SQL_GUARDAR_ASISTENCIA = """
+            MERGE INTO ASISTENCIA (RESERVA_CODIGO, HORA)
+            KEY (RESERVA_CODIGO)
+            VALUES (?, ?)
+            """;
+
     private final Connection conexion;
 
     /**
@@ -92,7 +98,7 @@ public class RepositorioEventosH2 implements RepositorioEventos {
     }
 
     /**
-     * Inserta o actualiza el evento junto con sus reservas.
+     * Inserta o actualiza el evento junto con sus reservas y asistencias.
      */
     @Override
     public void guardar(Evento evento) {
@@ -103,6 +109,7 @@ public class RepositorioEventosH2 implements RepositorioEventos {
             guardarEvento(evento);
             for (Reserva reserva : evento.getReservas()) {
                 guardarReserva(evento.getId(), reserva);
+                guardarAsistencia(reserva.getCodigo(), reserva.getAsistencia());
             }
         } catch (SQLException e) {
             throw new IllegalStateException(
@@ -129,6 +136,17 @@ public class RepositorioEventosH2 implements RepositorioEventos {
             sentencia.setString(3, reserva.getEstudianteId());
             sentencia.setTimestamp(4, Timestamp.valueOf(reserva.getVenceEn()));
             sentencia.setString(5, reserva.getEstado().name());
+            sentencia.executeUpdate();
+        }
+    }
+
+    private void guardarAsistencia(String codigoReserva, Asistencia asistencia) throws SQLException {
+        if (asistencia == null) {
+            return;
+        }
+        try (PreparedStatement sentencia = conexion.prepareStatement(SQL_GUARDAR_ASISTENCIA)) {
+            sentencia.setString(1, codigoReserva);
+            sentencia.setTimestamp(2, Timestamp.valueOf(asistencia.getHora()));
             sentencia.executeUpdate();
         }
     }
