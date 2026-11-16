@@ -1,6 +1,5 @@
 package co.edu.unillanos.campusfest.infrastructure.ui;
 
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 import co.edu.unillanos.campusfest.application.usecase.ReservarEntrada;
@@ -46,9 +45,8 @@ public class PantallaReservaController {
             String estudianteId = campoEstudianteId.getText().trim();
             Reserva reserva = reservarEntrada.solicitarReserva(eventoId, estudianteId);
             campoCodigoReserva.setText(reserva.getCodigo());
-            LocalDateTime venceEn = LocalDateTime.now().plusMinutes(10);
             mostrarExito("Reserva pendiente creada. Código: " + reserva.getCodigo()
-                    + ". Vence: " + venceEn.format(FORMATO_HORA) + ".");
+                    + ". Vence: " + reserva.getVenceEn().format(FORMATO_HORA) + ".");
         } catch (IllegalArgumentException | IllegalStateException e) {
             mostrarError(e.getMessage());
         }
