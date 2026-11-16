@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      styleClass="pantalla"
+      stylesheets="@estilos.css">
+
+    <Label text="Edición de evento y aforo" styleClass="titulo"/>
+    <Label text="Eventos precargados de ejemplo: ev-1 y ev-2 (al abrir se carga ev-1; cambia el ID para cargar otro)"
+           styleClass="subtitulo-ayuda"
+           wrapText="true"
+           maxWidth="Infinity"/>
+
+    <Label text="ID del evento" styleClass="etiqueta-campo"/>
+    <TextField fx:id="campoEventoId"
+               text="ev-1"
+               promptText="Ej. ev-1 o ev-2"
+               styleClass="campo-texto"/>
+
+    <Label text="Nombre del evento" styleClass="etiqueta-campo"/>
+    <TextField fx:id="campoNombre"
+               promptText="Nombre del evento"
+               styleClass="campo-texto"/>
+
+    <Label text="Fecha y hora (AAAA-MM-DDTHH:MM)" styleClass="etiqueta-campo"/>
+    <TextField fx:id="campoFecha"
+               promptText="Ej. 2026-11-20T18:00"
+               styleClass="campo-texto"/>
+
+    <Label text="Lugar" styleClass="etiqueta-campo"/>
+    <TextField fx:id="campoLugar"
+               promptText="Lugar del evento"
+               styleClass="campo-texto"/>
+
+    <Label text="Aforo máximo" styleClass="etiqueta-campo"/>
+    <TextField fx:id="campoAforo"
+               promptText="Ej. 100"
+               styleClass="campo-texto"/>
+
+    <HBox spacing="10">
+        <Button text="Cargar evento" onAction="#cargarEvento" styleClass="boton-secundario"/>
+        <Button text="Guardar cambios" onAction="#guardarCambios" styleClass="boton-primario"/>
+        <Button text="Limpiar" onAction="#limpiar" styleClass="boton-limpiar"/>
+    </HBox>
+
+    <Label fx:id="etiquetaMensaje"
+           styleClass="etiqueta-mensaje"
+           wrapText="true"
+           maxWidth="Infinity"/>
+</VBox>
