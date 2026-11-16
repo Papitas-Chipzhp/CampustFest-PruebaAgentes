@@ -83,6 +83,27 @@ public class Evento {
                 "No existe una reserva con el código " + codigo + " en este evento.");
     }
 
+    public void cambiarDatos(String nombre, LocalDateTime fecha, String lugar) {
+        validarDatosEvento(nombre, fecha, lugar);
+        this.nombre = nombre;
+        this.fecha = fecha;
+        this.lugar = lugar;
+    }
+
+    public void cambiarAforo(int nuevoAforo, LocalDateTime ahora) {
+        if (nuevoAforo < 0) {
+            throw new IllegalArgumentException("El aforo no puede ser negativo.");
+        }
+        int ocupados = contarOcupados(ahora);
+        int aforoMinimo = bloqueados + ocupados;
+        if (nuevoAforo < aforoMinimo) {
+            throw new IllegalStateException(
+                    "Hay " + ocupados + " cupos ocupados por reservas y " + bloqueados
+                            + " bloqueados: el aforo no puede ser menor que " + aforoMinimo + ".");
+        }
+        this.aforo = nuevoAforo;
+    }
+
     public String getId() {
         return id;
     }
