@@ -93,27 +93,65 @@ public class RepositorioEventosH2 implements RepositorioEventos {
             }
         } catch (SQLException e) {
             throw new IllegalStateException(
-                    "No fue posible consultar el evento en la base de datos.", e);
+                    "No fue posible consultar el evento en la base de datos: " + e.getMessage(), e);
         }
     }
 
     /**
-     * Inserta o actualiza el evento junto con sus reservas y asistencias.
+     * Inserta o actualiza el evento junto con sus reservas y asistencias de forma transaccional.
      */
     @Override
     public void guardar(Evento evento) {
         if (evento == null) {
             throw new IllegalArgumentException("El evento es obligatorio.");
         }
+        boolean autoCommitPrevio = true;
+        boolean transaccionPropia = false;
         try {
+            autoCommitPrevio = conexion.getAutoCommit();
+            if (autoCommitPrevio) {
+                conexion.setAutoCommit(false);
+                transaccionPropia = true;
+            }
             guardarEvento(evento);
             for (Reserva reserva : evento.getReservas()) {
                 guardarReserva(evento.getId(), reserva);
                 guardarAsistencia(reserva.getCodigo(), reserva.getAsistencia());
             }
+            if (transaccionPropia) {
+                conexion.commit();
+            }
+        } catch (SQLException e) {
+            if (transaccionPropia) {
+                deshacerTransaccion();
+            }
+            throw new IllegalStateException(
+                    "No fue posible guardar el evento en la base de datos: " + e.getMessage(), e);
+        } finally {
+            if (transaccionPropia) {
+                restaurarAutoCommit(autoCommitPrevio);
+            }
+        }
+    }
+
+    private void deshacerTransaccion() {
+        try {
+            if (!conexion.isClosed()) {
+                conexion.rollback();
+            }
+        } catch (SQLException ignorada) {
+            // Se conserva la excepción original que originó el rollback.
+        }
+    }
+
+    private void restaurarAutoCommit(boolean autoCommitPrevio) {
+        try {
+            if (!conexion.isClosed()) {
+                conexion.setAutoCommit(autoCommitPrevio);
+            }
         } catch (SQLException e) {
             throw new IllegalStateException(
-                    "No fue posible guardar el evento en la base de datos.", e);
+                    "No fue posible restaurar el modo de confirmación automática: " + e.getMessage(), e);
         }
     }
 
@@ -197,7 +235,7 @@ public class RepositorioEventosH2 implements RepositorioEventos {
             }
         } catch (SQLException e) {
             throw new IllegalStateException(
-                    "No fue posible inicializar el esquema de la base de datos.", e);
+                    "No fue posible inicializar el esquema de la base de datos: " + e.getMessage(), e);
         }
     }
 
