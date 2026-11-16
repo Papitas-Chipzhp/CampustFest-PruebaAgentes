@@ -3,7 +3,6 @@ package co.edu.unillanos.campusfest.application.usecase;
 import co.edu.unillanos.campusfest.application.port.Reloj;
 import co.edu.unillanos.campusfest.application.port.RepositorioEventos;
 import co.edu.unillanos.campusfest.domain.Asistencia;
-import co.edu.unillanos.campusfest.domain.EstadoReserva;
 import co.edu.unillanos.campusfest.domain.Evento;
 import co.edu.unillanos.campusfest.domain.Reserva;
 
@@ -32,9 +31,6 @@ public class RegistrarIngreso {
     public Asistencia registrar(String eventoId, String codigo) {
         Evento evento = buscarEvento(eventoId);
         Reserva reserva = evento.buscarReservaPorCodigo(codigo);
-        if (reserva.getEstado() != EstadoReserva.CONFIRMADA) {
-            throw new IllegalStateException("Solo pueden ingresar reservas confirmadas.");
-        }
         Asistencia asistencia = reserva.registrarIngreso(reloj.ahora());
         repositorio.guardar(evento);
         return asistencia;
