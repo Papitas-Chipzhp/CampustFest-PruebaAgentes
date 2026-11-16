@@ -56,6 +56,40 @@ public class Reserva {
         return false;
     }
 
+    public void confirmar(LocalDateTime ahora) {
+        validarHora(ahora);
+        if (estado != EstadoReserva.PENDIENTE) {
+            throw new IllegalStateException("Solo se puede confirmar una reserva en estado pendiente.");
+        }
+        if (!estaVigente(ahora)) {
+            throw new IllegalStateException(
+                    "El plazo de " + MINUTOS_PLAZO + " minutos para confirmar la reserva ya venció.");
+        }
+        this.estado = EstadoReserva.CONFIRMADA;
+    }
+
+    public void cancelar() {
+        if (estado == EstadoReserva.CANCELADA) {
+            throw new IllegalStateException("La reserva ya se encuentra cancelada.");
+        }
+        if (estado == EstadoReserva.VENCIDA) {
+            throw new IllegalStateException("No se puede cancelar una reserva vencida.");
+        }
+        this.estado = EstadoReserva.CANCELADA;
+    }
+
+    public Asistencia registrarIngreso(LocalDateTime ahora) {
+        validarHora(ahora);
+        if (estado != EstadoReserva.CONFIRMADA) {
+            throw new IllegalStateException("Solo puede ingresar una reserva confirmada.");
+        }
+        if (asistencia != null) {
+            throw new IllegalStateException("La reserva ya registró su ingreso.");
+        }
+        this.asistencia = new Asistencia(ahora);
+        return this.asistencia;
+    }
+
     public String getCodigo() {
         return codigo;
     }
