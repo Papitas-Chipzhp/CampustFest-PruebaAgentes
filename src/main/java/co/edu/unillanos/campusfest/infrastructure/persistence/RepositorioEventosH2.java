@@ -43,6 +43,18 @@ public class RepositorioEventosH2 implements RepositorioEventos {
             ORDER BY r.VENCE_EN, r.CODIGO
             """;
 
+    private static final String SQL_GUARDAR_EVENTO = """
+            MERGE INTO EVENTO (ID, NOMBRE, FECHA, LUGAR, AFORO, BLOQUEADOS)
+            KEY (ID)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """;
+
+    private static final String SQL_GUARDAR_RESERVA = """
+            MERGE INTO RESERVA (CODIGO, EVENTO_ID, ESTUDIANTE_ID, VENCE_EN, ESTADO)
+            KEY (CODIGO)
+            VALUES (?, ?, ?, ?, ?)
+            """;
+
     private final Connection conexion;
 
     /**
@@ -79,9 +91,46 @@ public class RepositorioEventosH2 implements RepositorioEventos {
         }
     }
 
+    /**
+     * Inserta o actualiza el evento junto con sus reservas.
+     */
     @Override
     public void guardar(Evento evento) {
-        throw new UnsupportedOperationException("Pendiente v6");
+        if (evento == null) {
+            throw new IllegalArgumentException("El evento es obligatorio.");
+        }
+        try {
+            guardarEvento(evento);
+            for (Reserva reserva : evento.getReservas()) {
+                guardarReserva(evento.getId(), reserva);
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException(
+                    "No fue posible guardar el evento en la base de datos.", e);
+        }
+    }
+
+    private void guardarEvento(Evento evento) throws SQLException {
+        try (PreparedStatement sentencia = conexion.prepareStatement(SQL_GUARDAR_EVENTO)) {
+            sentencia.setString(1, evento.getId());
+            sentencia.setString(2, evento.getNombre());
+            sentencia.setTimestamp(3, Timestamp.valueOf(evento.getFecha()));
+            sentencia.setString(4, evento.getLugar());
+            sentencia.setInt(5, evento.getAforo());
+            sentencia.setInt(6, evento.getBloqueados());
+            sentencia.executeUpdate();
+        }
+    }
+
+    private void guardarReserva(String eventoId, Reserva reserva) throws SQLException {
+        try (PreparedStatement sentencia = conexion.prepareStatement(SQL_GUARDAR_RESERVA)) {
+            sentencia.setString(1, reserva.getCodigo());
+            sentencia.setString(2, eventoId);
+            sentencia.setString(3, reserva.getEstudianteId());
+            sentencia.setTimestamp(4, Timestamp.valueOf(reserva.getVenceEn()));
+            sentencia.setString(5, reserva.getEstado().name());
+            sentencia.executeUpdate();
+        }
     }
 
     private List<Reserva> buscarReservas(String eventoId) throws SQLException {
