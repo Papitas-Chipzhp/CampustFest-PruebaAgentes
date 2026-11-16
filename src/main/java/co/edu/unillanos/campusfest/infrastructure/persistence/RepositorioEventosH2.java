@@ -114,10 +114,7 @@ public class RepositorioEventosH2 implements RepositorioEventos {
                 transaccionPropia = true;
             }
             guardarEvento(evento);
-            for (Reserva reserva : evento.getReservas()) {
-                guardarReserva(evento.getId(), reserva);
-                guardarAsistencia(reserva.getCodigo(), reserva.getAsistencia());
-            }
+            guardarReservas(evento);
             if (transaccionPropia) {
                 conexion.commit();
             }
@@ -152,6 +149,13 @@ public class RepositorioEventosH2 implements RepositorioEventos {
         } catch (SQLException e) {
             throw new IllegalStateException(
                     "No fue posible restaurar el modo de confirmación automática.", e);
+        }
+    }
+
+    private void guardarReservas(Evento evento) throws SQLException {
+        for (Reserva reserva : evento.getReservas()) {
+            guardarReserva(evento.getId(), reserva);
+            guardarAsistencia(reserva.getCodigo(), reserva.getAsistencia());
         }
     }
 
@@ -240,18 +244,23 @@ public class RepositorioEventosH2 implements RepositorioEventos {
     }
 
     private String cargarScriptEsquema() {
+        String sql = null;
         try (InputStream entrada = RepositorioEventosH2.class.getResourceAsStream(RUTA_ESQUEMA_CLASSPATH)) {
             if (entrada != null) {
-                return new String(entrada.readAllBytes(), StandardCharsets.UTF_8);
-            }
-            Path archivo = Path.of(RUTA_ESQUEMA_DISCO);
-            if (Files.isRegularFile(archivo)) {
-                return Files.readString(archivo, StandardCharsets.UTF_8);
+                sql = new String(entrada.readAllBytes(), StandardCharsets.UTF_8);
+            } else {
+                Path archivo = Path.of(RUTA_ESQUEMA_DISCO);
+                if (Files.isRegularFile(archivo)) {
+                    sql = Files.readString(archivo, StandardCharsets.UTF_8);
+                }
             }
         } catch (IOException e) {
             throw new IllegalStateException(
                     "No fue posible leer el script del esquema de base de datos.", e);
         }
-        throw new IllegalStateException("No se encontró el script del esquema de base de datos.");
+        if (sql == null || sql.isBlank()) {
+            throw new IllegalStateException("No se encontró el script del esquema de base de datos.");
+        }
+        return sql;
     }
 }
