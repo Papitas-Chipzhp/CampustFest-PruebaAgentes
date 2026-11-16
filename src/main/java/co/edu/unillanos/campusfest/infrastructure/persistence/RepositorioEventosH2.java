@@ -93,7 +93,7 @@ public class RepositorioEventosH2 implements RepositorioEventos {
             }
         } catch (SQLException e) {
             throw new IllegalStateException(
-                    "No fue posible consultar el evento en la base de datos: " + e.getMessage(), e);
+                    "No fue posible consultar el evento en la base de datos.", e);
         }
     }
 
@@ -126,7 +126,7 @@ public class RepositorioEventosH2 implements RepositorioEventos {
                 deshacerTransaccion();
             }
             throw new IllegalStateException(
-                    "No fue posible guardar el evento en la base de datos: " + e.getMessage(), e);
+                    "No fue posible guardar el evento en la base de datos.", e);
         } finally {
             if (transaccionPropia) {
                 restaurarAutoCommit(autoCommitPrevio);
@@ -151,7 +151,7 @@ public class RepositorioEventosH2 implements RepositorioEventos {
             }
         } catch (SQLException e) {
             throw new IllegalStateException(
-                    "No fue posible restaurar el modo de confirmación automática: " + e.getMessage(), e);
+                    "No fue posible restaurar el modo de confirmación automática.", e);
         }
     }
 
@@ -235,7 +235,7 @@ public class RepositorioEventosH2 implements RepositorioEventos {
             }
         } catch (SQLException e) {
             throw new IllegalStateException(
-                    "No fue posible inicializar el esquema de la base de datos: " + e.getMessage(), e);
+                    "No fue posible inicializar el esquema de la base de datos.", e);
         }
     }
 
