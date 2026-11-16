@@ -1,6 +1,9 @@
 package co.edu.unillanos.campusfest;
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 
 import co.edu.unillanos.campusfest.application.port.Reloj;
@@ -10,7 +13,7 @@ import co.edu.unillanos.campusfest.application.usecase.EditarEvento;
 import co.edu.unillanos.campusfest.application.usecase.RegistrarIngreso;
 import co.edu.unillanos.campusfest.application.usecase.ReservarEntrada;
 import co.edu.unillanos.campusfest.domain.Evento;
-import co.edu.unillanos.campusfest.infrastructure.persistence.RepositorioEventosEnMemoria;
+import co.edu.unillanos.campusfest.infrastructure.persistence.RepositorioEventosH2;
 import co.edu.unillanos.campusfest.infrastructure.reloj.RelojDelSistema;
 import co.edu.unillanos.campusfest.infrastructure.ui.PantallaCuposController;
 import co.edu.unillanos.campusfest.infrastructure.ui.PantallaEventoController;
@@ -36,10 +39,13 @@ public class App extends Application {
     private static final String USUARIO_BASE_DATOS = "sa";
     private static final String CLAVE_BASE_DATOS = "";
 
-        @Override
+    private Connection conexion;
+
+    @Override
     public void start(Stage escenario) {
         try {
-            RepositorioEventos repositorio = new RepositorioEventosEnMemoria();
+            conexion = abrirConexion();
+            RepositorioEventos repositorio = new RepositorioEventosH2(conexion);
             Reloj reloj = new RelojDelSistema();
             precargarEventos(repositorio);
 
@@ -72,7 +78,28 @@ public class App extends Application {
         }
     }
 
-    
+    @Override
+    public void stop() {
+        if (conexion == null) {
+            return;
+        }
+        try {
+            if (!conexion.isClosed()) {
+                conexion.close();
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("No fue posible cerrar la conexión con la base de datos.", e);
+        }
+    }
+
+    private Connection abrirConexion() {
+        try {
+            return DriverManager.getConnection(URL_BASE_DATOS, USUARIO_BASE_DATOS, CLAVE_BASE_DATOS);
+        } catch (SQLException e) {
+            throw new IllegalStateException(
+                    "No fue posible abrir la base de datos local de CampusFest.", e);
+        }
+    }
 
     private void mostrarErrorFatal(String mensaje) {
         Alert alerta = new Alert(Alert.AlertType.ERROR);
